@@ -71,9 +71,22 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user }) => {
     }
   };
 
-  const handleSave = () => {
-    console.log('Settings saved:', settings);
-    // Here you would save to backend
+  const handleSave = async () => {
+    try {
+      const [firstName, ...lastNameParts] = settings.profile.name.split(' ');
+      const lastName = lastNameParts.join(' ');
+      
+      await updateUser({
+        first_name: firstName,
+        last_name: lastName,
+        phone: settings.profile.phone,
+        avatar_url: settings.profile.avatar
+      });
+      
+      toast.success('Paramètres sauvegardés avec succès');
+    } catch (error) {
+      toast.error('Erreur lors de la sauvegarde');
+    }
   };
 
   const renderProfileSettings = () => (

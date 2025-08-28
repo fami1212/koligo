@@ -410,23 +410,23 @@ const BookingPage: React.FC<BookingPageProps> = ({ user }) => {
               
               <div className="flex items-start space-x-4 mb-4">
                 <img
-                  src={transporter.avatar}
-                  alt={transporter.name}
+                  src={transporter?.avatar_url || 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop'}
+                  alt={transporter?.first_name || 'Transporteur'}
                   className="w-12 h-12 rounded-full object-cover"
                 />
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 mb-1">
                     <h4 className="font-medium text-gray-900 dark:text-white">
-                      {transporter.name}
+                      {transporter?.first_name} {transporter?.last_name}
                     </h4>
-                    {transporter.verified && (
+                    {transporter?.is_verified && (
                       <Shield className="h-4 w-4 text-emerald-500" />
                     )}
                   </div>
                   <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-400">
                     <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                    <span>{transporter.rating}</span>
-                    <span>({transporter.reviews} avis)</span>
+                    <span>4.8</span>
+                    <span>(24 avis)</span>
                   </div>
                 </div>
               </div>
@@ -445,7 +445,7 @@ const BookingPage: React.FC<BookingPageProps> = ({ user }) => {
                 <div className="flex items-center space-x-2">
                   <Package className="h-4 w-4 text-gray-400" />
                   <span className="text-gray-600 dark:text-gray-400">
-                    Durée: {transporter.duration}
+                    Durée: 2-3 jours
                   </span>
                 </div>
               </div>

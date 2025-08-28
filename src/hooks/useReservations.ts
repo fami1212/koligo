@@ -41,18 +41,19 @@ export const useReservations = (userId?: string, userRole?: 'client' | 'transpor
   };
 
   const createReservation = async (reservationData: {
+    expedition_id: string;
     trip_id: string;
     client_id: string;
     transporteur_id: string;
     total_price: number;
     pickup_address?: string;
     delivery_address?: string;
+    pickup_date?: string;
   }) => {
     try {
       const { data, error } = await supabase
         .from('reservations')
         .insert({
-          expedition_id: null, // Will be set when expedition system is implemented
           ...reservationData,
           status: 'pending',
           tracking_code: `KLG${Date.now()}`,

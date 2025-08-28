@@ -14,7 +14,8 @@ import {
   Users,
   Globe,
   Zap,
-  Award
+  Award,
+  Truck
 } from 'lucide-react';
 
 interface HomePageProps {

@@ -16,6 +16,7 @@ import {
   Clock
 } from 'lucide-react';
 import { useReservations } from '../hooks/useReservations';
+import { useMemo } from 'react';
 
 interface WalletPageProps {
   user: any;

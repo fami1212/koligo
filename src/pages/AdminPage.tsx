@@ -202,7 +202,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ user }) => {
                   {user.status}
                 </span>
                 <button 
-                  onClick={() => toast.info('Fonctionnalité en développement')}
+                  onClick={() => toast('Fonctionnalité en développement')}
                   className="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
                 >
                   <Eye className="h-4 w-4" />
@@ -371,7 +371,7 @@ const AdminPage: React.FC<AdminPageProps> = ({ user }) => {
                     <div className="flex items-center justify-between">
                       <p className="text-xs text-gray-500 dark:text-gray-500">{dispute.client} vs {dispute.transporter}</p>
                       <button 
-                        onClick={() => toast.info('Fonctionnalité en développement')}
+                        onClick={() => toast('Fonctionnalité en développement')}
                         className="text-sm text-blue-600 hover:text-blue-700"
                       >
                         Voir détails

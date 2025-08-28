@@ -188,7 +188,7 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ user }) => {
                             </p>
                             <div className="flex items-center space-x-2 mt-3 text-sm text-gray-500 dark:text-gray-500">
                               <Clock className="h-4 w-4" />
-                              <span>{getTimeAgo(notification.time)}</span>
+                              <span>{getTimeAgo(notification.created_at)}</span>
                             </div>
                           </div>
 
