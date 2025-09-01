@@ -196,7 +196,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ user }) => {
                       </div>
                       <div className="text-right">
                         <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                          {trip.price_per_kg} MAD/kg
+                          {trip.price_per_kg} {trip.currency || 'MAD'}/kg
                         </div>
                         <div className="text-sm text-gray-600 dark:text-gray-400">
                           Capacité: {trip.available_weight_kg}kg

@@ -20,7 +20,7 @@ interface TrackingPageProps {
 }
 
 const TrackingPage: React.FC<TrackingPageProps> = ({ user }) => {
-  const { reservations, loading } = useReservations(user?.id, user?.profile?.role);
+  const { reservations, loading, updateReservationStatus } = useReservations(user?.id, user?.profile?.role);
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -50,6 +50,7 @@ const TrackingPage: React.FC<TrackingPageProps> = ({ user }) => {
     const matchesFilter = filter === 'all' || reservation.status === filter;
     const matchesSearch = !searchQuery || 
       reservation.tracking_code?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      reservation.expedition_title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       reservation.departure_city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       reservation.destination_city?.toLowerCase().includes(searchQuery.toLowerCase());
     
@@ -157,7 +158,12 @@ const TrackingPage: React.FC<TrackingPageProps> = ({ user }) => {
                     </div>
                     <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
                       <MapPin className="h-4 w-4" />
-                      <span>{user?.profile?.role === 'transporteur' ? reservation.client_first_name : reservation.transporteur_first_name}</span>
+                      <span>
+                        {user?.profile?.role === 'transporteur' 
+                          ? `Client: ${reservation.client_first_name} ${reservation.client_last_name}`
+                          : `Transporteur: ${reservation.transporteur_first_name} ${reservation.transporteur_last_name}`
+                        }
+                      </span>
                     </div>
                     <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
                       <Package className="h-4 w-4" />
@@ -172,6 +178,22 @@ const TrackingPage: React.FC<TrackingPageProps> = ({ user }) => {
                           <CheckCircle className="h-4 w-4" />
                           <span className="text-sm">Livré avec succès</span>
                         </div>
+                      )}
+                      {user?.profile?.role === 'transporteur' && reservation.status === 'confirmed' && (
+                        <button
+                          onClick={() => updateReservationStatus(reservation.id, 'in_transit')}
+                          className="text-sm bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600 transition-colors"
+                        >
+                          Marquer en transit
+                        </button>
+                      )}
+                      {user?.profile?.role === 'transporteur' && reservation.status === 'in_transit' && (
+                        <button
+                          onClick={() => updateReservationStatus(reservation.id, 'delivered', { delivery_date: new Date().toISOString() })}
+                          className="text-sm bg-green-500 text-white px-3 py-1 rounded-lg hover:bg-green-600 transition-colors"
+                        >
+                          Marquer livré
+                        </button>
                       )}
                     </div>
                     <div className="flex items-center space-x-2">

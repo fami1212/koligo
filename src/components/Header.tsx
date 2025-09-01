@@ -11,6 +11,7 @@ import {
   Bell,
   Search
 } from 'lucide-react';
+import { useNotifications } from '../hooks/useNotifications';
 
 interface HeaderProps {
   user: any;
@@ -29,6 +30,8 @@ const Header: React.FC<HeaderProps> = ({
   onToggleTheme,
   onToggleSidebar
 }) => {
+  const { unreadCount } = useNotifications(user?.id);
+  
   const userName = user?.profile ? 
     `${user.profile.first_name || ''} ${user.profile.last_name || ''}`.trim() || 
     user.email?.split('@')[0] : 
@@ -93,7 +96,11 @@ const Header: React.FC<HeaderProps> = ({
                   className="p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors relative"
                 >
                   <Bell className="h-5 w-5" />
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
                 </Link>
 
                 {/* User menu */}

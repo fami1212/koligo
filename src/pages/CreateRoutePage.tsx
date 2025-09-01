@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Calendar, Package, Truck, Car, Plane, Clock, DollarSign } from 'lucide-react';
+import { MapPin, Calendar, Package, Truck, Car, Plane, Clock, DollarSign, Globe } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 
@@ -18,6 +18,7 @@ const CreateRoutePage: React.FC<CreateRoutePageProps> = ({ user }) => {
     transport: 'car',
     capacity: '',
     basePrice: '',
+    currency: 'MAD',
     description: ''
   });
   const [loading, setLoading] = useState(false);
@@ -27,6 +28,15 @@ const CreateRoutePage: React.FC<CreateRoutePageProps> = ({ user }) => {
     { id: 'camion', name: 'Camion', icon: Truck, description: 'Transport professionnel' },
     { id: 'avion', name: 'Avion', icon: Plane, description: 'Transport aérien' },
     { id: 'bus', name: 'Bus', icon: Truck, description: 'Transport en commun' }
+  ];
+
+  const currencies = [
+    { code: 'MAD', name: 'Dirham Marocain', symbol: 'MAD' },
+    { code: 'EUR', name: 'Euro', symbol: '€' },
+    { code: 'USD', name: 'Dollar US', symbol: '$' },
+    { code: 'XOF', name: 'Franc CFA', symbol: 'XOF' },
+    { code: 'GBP', name: 'Livre Sterling', symbol: '£' },
+    { code: 'CAD', name: 'Dollar Canadien', symbol: 'CAD' }
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -51,6 +61,7 @@ const CreateRoutePage: React.FC<CreateRoutePageProps> = ({ user }) => {
         transport_type: formData.transport as 'avion' | 'voiture' | 'camion' | 'bus',
         available_weight_kg: parseFloat(formData.capacity),
         price_per_kg: parseFloat(formData.basePrice),
+        currency: formData.currency,
         vehicle_info: formData.description || null,
         status: 'open' as const
         })
@@ -68,6 +79,7 @@ const CreateRoutePage: React.FC<CreateRoutePageProps> = ({ user }) => {
         transport: 'voiture',
         capacity: '',
         basePrice: '',
+        currency: 'MAD',
         description: ''
       });
       
@@ -199,7 +211,7 @@ const CreateRoutePage: React.FC<CreateRoutePageProps> = ({ user }) => {
               </div>
 
               {/* Capacity & Price */}
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Capacité disponible (kg)
@@ -218,18 +230,38 @@ const CreateRoutePage: React.FC<CreateRoutePageProps> = ({ user }) => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Prix de base (par kg)
+                    Prix de base
                   </label>
                   <div className="relative">
                     <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                     <input
                       type="number"
+                      step="0.01"
                       required
                       value={formData.basePrice}
                       onChange={(e) => setFormData({ ...formData, basePrice: e.target.value })}
-                      placeholder="Ex: 15"
+                      placeholder="Ex: 15.50"
                       className="w-full pl-11 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white"
                     />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Devise
+                  </label>
+                  <div className="relative">
+                    <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                    <select
+                      value={formData.currency}
+                      onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                      className="w-full pl-11 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white"
+                    >
+                      {currencies.map((currency) => (
+                        <option key={currency.code} value={currency.code}>
+                          {currency.code} - {currency.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>

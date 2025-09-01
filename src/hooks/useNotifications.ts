@@ -15,6 +15,7 @@ interface Notification {
 export const useNotifications = (userId?: string) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     if (userId) {
@@ -46,40 +47,80 @@ export const useNotifications = (userId?: string) => {
     try {
       setLoading(true);
       
-      // For now, use mock data since notifications table doesn't exist yet
-      const mockNotifications: Notification[] = [
-        {
-          id: '1',
-          user_id: userId || '',
-          type: 'delivery',
-          title: 'Colis livré avec succès',
-          message: 'Votre colis KLG-001234 a été livré à Dakar',
-          read: false,
-          created_at: new Date().toISOString()
-        },
-        {
-          id: '2',
-          user_id: userId || '',
-          type: 'message',
-          title: 'Nouveau message',
-          message: 'Ahmed Benali vous a envoyé un message',
-          read: false,
-          created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-        },
-        {
-          id: '3',
-          user_id: userId || '',
-          type: 'booking',
-          title: 'Nouvelle réservation',
-          message: 'Fatima Zahra a réservé votre trajet',
-          read: true,
-          created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-        }
-      ];
+      // Get user's reservations to generate dynamic notifications
+      const { data: reservations, error } = await supabase
+        .from('reservations_extended')
+        .select('*')
+        .or(`client_id.eq.${userId},transporteur_id.eq.${userId}`)
+        .order('created_at', { ascending: false })
+        .limit(20);
 
-      setNotifications(mockNotifications);
+      if (error) throw error;
+
+      // Generate notifications from reservations
+      const dynamicNotifications: Notification[] = [];
+      
+      reservations?.forEach((reservation, index) => {
+        const isTransporteur = reservation.transporteur_id === userId;
+        const isClient = reservation.client_id === userId;
+        
+        // Notification for reservation creation
+        if (isTransporteur) {
+          dynamicNotifications.push({
+            id: `booking-${reservation.id}`,
+            user_id: userId || '',
+            type: 'booking',
+            title: 'Nouvelle réservation',
+            message: `${reservation.client_first_name} ${reservation.client_last_name} a réservé votre trajet ${reservation.departure_city} → ${reservation.destination_city}`,
+            read: index > 2, // First 3 unread
+            created_at: reservation.created_at
+          });
+        }
+        
+        // Status change notifications
+        if (reservation.status === 'delivered') {
+          dynamicNotifications.push({
+            id: `delivery-${reservation.id}`,
+            user_id: userId || '',
+            type: 'delivery',
+            title: isClient ? 'Colis livré' : 'Transport terminé',
+            message: `${isClient ? 'Votre colis' : 'Votre transport'} ${reservation.tracking_code} a été livré avec succès`,
+            read: index > 1,
+            created_at: reservation.delivery_date || reservation.updated_at
+          });
+        } else if (reservation.status === 'in_transit') {
+          dynamicNotifications.push({
+            id: `transit-${reservation.id}`,
+            user_id: userId || '',
+            type: 'delivery',
+            title: isClient ? 'Colis en transit' : 'Transport en cours',
+            message: `${isClient ? 'Votre colis' : 'Votre transport'} ${reservation.tracking_code} est en cours de livraison`,
+            read: index > 0,
+            created_at: reservation.pickup_date || reservation.updated_at
+          });
+        }
+      });
+
+      // Add some system notifications
+      if (dynamicNotifications.length > 0) {
+        dynamicNotifications.push({
+          id: 'welcome',
+          user_id: userId || '',
+          type: 'system',
+          title: 'Bienvenue sur KoliGo!',
+          message: `Votre compte ${userRole} est maintenant actif. Commencez à ${userRole === 'transporteur' ? 'proposer vos trajets' : 'envoyer vos colis'}.`,
+          read: true,
+          created_at: user?.created_at || new Date().toISOString()
+        });
+      }
+
+      setNotifications(dynamicNotifications);
+      setUnreadCount(dynamicNotifications.filter(n => !n.read).length);
     } catch (error: any) {
       console.error('Error fetching notifications:', error);
+      // Fallback to empty array on error
+      setNotifications([]);
+      setUnreadCount(0);
     } finally {
       setLoading(false);
     }
@@ -90,9 +131,9 @@ export const useNotifications = (userId?: string) => {
       setNotifications(prev => 
         prev.map(n => n.id === id ? { ...n, read: true } : n)
       );
-      toast.success('Notification marquée comme lue');
+      setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error: any) {
-      toast.error('Erreur lors de la mise à jour');
+      console.error('Error marking notification as read:', error);
     }
   };
 
@@ -101,23 +142,27 @@ export const useNotifications = (userId?: string) => {
       setNotifications(prev => 
         prev.map(n => ({ ...n, read: true }))
       );
-      toast.success('Toutes les notifications marquées comme lues');
+      setUnreadCount(0);
     } catch (error: any) {
-      toast.error('Erreur lors de la mise à jour');
+      console.error('Error marking all notifications as read:', error);
     }
   };
 
   const deleteNotification = async (id: string) => {
     try {
+      const notification = notifications.find(n => n.id === id);
       setNotifications(prev => prev.filter(n => n.id !== id));
-      toast.success('Notification supprimée');
+      if (notification && !notification.read) {
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
     } catch (error: any) {
-      toast.error('Erreur lors de la suppression');
+      console.error('Error deleting notification:', error);
     }
   };
 
   return {
     notifications,
+    unreadCount,
     loading,
     markAsRead,
     markAllAsRead,

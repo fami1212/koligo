@@ -38,9 +38,15 @@ export const useTrips = (transporteurId?: string) => {
 
   const createTrip = async (tripData: Omit<Trip, 'id' | 'created_at' | 'updated_at'>) => {
     try {
+      // Ensure transporteur_id is set correctly
+      const tripWithTransporteur = {
+        ...tripData,
+        transporteur_id: tripData.transporteur_id
+      };
+      
       const { data, error } = await supabase
         .from('trips')
-        .insert(tripData)
+        .insert(tripWithTransporteur)
         .select()
         .single();
 

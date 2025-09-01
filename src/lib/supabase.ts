@@ -54,6 +54,7 @@ export interface Trip {
   available_weight_kg: number;
   available_volume_m3?: number;
   price_per_kg: number;
+  currency: string;
   vehicle_info?: string;
   status: 'open' | 'full' | 'in_progress' | 'completed' | 'cancelled';
   created_at: string;

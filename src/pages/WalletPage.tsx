@@ -25,44 +25,72 @@ interface WalletPageProps {
 const WalletPage: React.FC<WalletPageProps> = ({ user }) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [filter, setFilter] = useState('all');
+  const { reservations, loading: reservationsLoading } = useReservations(user?.id, user?.profile?.role);
 
-  // Mock data - replace with real data from backend
-  const walletData = {
-    balance: 2450.75,
-    pendingEarnings: 320.50,
-    totalEarnings: 15680.25,
-    totalSpent: 8920.00
-  };
-
-  const transactions = [
-    {
-      id: 1,
-      type: 'earning',
-      amount: 450.00,
-      description: 'Transport Casablanca → Dakar',
-      date: '2024-01-15',
-      status: 'completed',
-      reference: 'KLG-001234'
-    },
-    {
-      id: 2,
-      type: 'payment',
-      amount: -280.00,
-      description: 'Expédition Rabat → Paris',
-      date: '2024-01-14',
-      status: 'completed',
-      reference: 'KLG-001233'
-    },
-    {
-      id: 3,
-      type: 'earning',
-      amount: 190.00,
-      description: 'Transport Madrid → Agadir',
-      date: '2024-01-13',
-      status: 'pending',
-      reference: 'KLG-001232'
+  // Calculate real wallet data from reservations
+  const walletData = useMemo(() => {
+    if (!reservations.length) {
+      return {
+        balance: 0,
+        pendingEarnings: 0,
+        totalEarnings: 0,
+        totalSpent: 0
+      };
     }
-  ];
+
+    const isTransporteur = user?.profile?.role === 'transporteur';
+    
+    let totalEarnings = 0;
+    let pendingEarnings = 0;
+    let totalSpent = 0;
+
+    reservations.forEach(reservation => {
+      const amount = parseFloat(reservation.total_price || '0');
+      
+      if (isTransporteur && reservation.transporteur_id === user.id) {
+        // Transporteur earnings
+        if (reservation.status === 'delivered') {
+          totalEarnings += amount * 0.9; // 90% after 10% commission
+        } else if (['confirmed', 'in_transit'].includes(reservation.status)) {
+          pendingEarnings += amount * 0.9;
+        }
+      } else if (!isTransporteur && reservation.client_id === user.id) {
+        // Client spending
+        if (['confirmed', 'in_transit', 'delivered'].includes(reservation.status)) {
+          totalSpent += amount;
+        }
+      }
+    });
+
+    return {
+      balance: totalEarnings - (totalEarnings * 0.1), // Available balance
+      pendingEarnings,
+      totalEarnings,
+      totalSpent
+    };
+  }, [reservations, user]);
+
+  // Generate transactions from reservations
+  const transactions = useMemo(() => {
+    if (!reservations.length) return [];
+    
+    const isTransporteur = user?.profile?.role === 'transporteur';
+    
+    return reservations.map((reservation, index) => {
+      const amount = parseFloat(reservation.total_price || '0');
+      const isEarning = isTransporteur && reservation.transporteur_id === user.id;
+      
+      return {
+        id: index + 1,
+        type: isEarning ? 'earning' : 'payment',
+        amount: isEarning ? amount * 0.9 : -amount, // 90% for transporteur, negative for client
+        description: `${isEarning ? 'Transport' : 'Expédition'} ${reservation.departure_city} → ${reservation.destination_city}`,
+        date: reservation.created_at.split('T')[0],
+        status: ['delivered'].includes(reservation.status) ? 'completed' : 'pending',
+        reference: reservation.tracking_code
+      };
+    }).filter(t => t.amount !== 0);
+  }, [reservations, user]);
 
   const getTransactionIcon = (type: string) => {
     return type === 'earning' ? ArrowUpRight : ArrowDownLeft;
