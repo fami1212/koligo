@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  ArrowLeft, 
-  MapPin, 
-  Clock, 
-  Package, 
-  Star, 
-  Shield, 
+import {
+  ArrowLeft,
+  MapPin,
+  Clock,
+  Package,
+  Star,
+  Shield,
   CreditCard,
-  Camera,
   Upload,
   CheckCircle
 } from 'lucide-react';
@@ -73,21 +72,37 @@ const BookingPage: React.FC<BookingPageProps> = ({ user }) => {
 
   const handleSubmit = async () => {
     if (!user || !trip) return;
-    
+
     setLoading(true);
     try {
-      await createReservation({
+      const total_price = parseFloat(bookingData.weight) * trip.price_per_kg;
+
+      const reservationData = {
         trip_id: trip.id,
         client_id: user.id,
         transporteur_id: trip.transporteur_id,
-        total_price: parseFloat(bookingData.weight) * trip.price_per_kg,
+        total_price,
         pickup_address: bookingData.pickupAddress,
-        delivery_address: bookingData.deliveryAddress
-      });
-      
+        delivery_address: bookingData.deliveryAddress,
+        pickup_date: bookingData.pickupDate || new Date().toISOString()
+      };
+
+      const expeditionData = {
+        weight: bookingData.weight,
+        description: bookingData.description,
+        departure_city: trip.departure_city, // Utiliser les infos du trajet
+        destination_city: trip.destination_city, // Utiliser les infos du trajet
+        content_type: bookingData.description // Ou un champ spécifique pour le type de contenu
+      };
+
+      console.log('Submitting reservation data:', reservationData);
+
+      await createReservation(reservationData, expeditionData);
+
       toast.success('Réservation confirmée!');
       navigate('/tracking');
     } catch (error) {
+      console.error('Error in handleSubmit:', error);
       toast.error('Erreur lors de la réservation');
     } finally {
       setLoading(false);
@@ -99,7 +114,7 @@ const BookingPage: React.FC<BookingPageProps> = ({ user }) => {
       <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
         Détails du colis
       </h3>
-      
+
       <div className="grid md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -209,7 +224,7 @@ const BookingPage: React.FC<BookingPageProps> = ({ user }) => {
       <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
         Adresses et horaires
       </h3>
-      
+
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           Adresse de ramassage *
@@ -276,7 +291,7 @@ const BookingPage: React.FC<BookingPageProps> = ({ user }) => {
         <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
           Récapitulatif et paiement
         </h3>
-        
+
         {/* Order Summary */}
         <div className="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg">
           <h4 className="font-semibold text-gray-900 dark:text-white mb-4">Résumé de la commande</h4>
@@ -345,17 +360,15 @@ const BookingPage: React.FC<BookingPageProps> = ({ user }) => {
             <div className="flex items-center justify-between mb-8">
               {[1, 2, 3].map((stepNumber) => (
                 <div key={stepNumber} className="flex items-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                    step >= stepNumber
-                      ? 'bg-emerald-500 text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                  }`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${step >= stepNumber
+                    ? 'bg-emerald-500 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                    }`}>
                     {step > stepNumber ? <CheckCircle className="h-5 w-5" /> : stepNumber}
                   </div>
                   {stepNumber < 3 && (
-                    <div className={`w-16 h-1 mx-2 ${
-                      step > stepNumber ? 'bg-emerald-500' : 'bg-gray-200 dark:bg-gray-700'
-                    }`} />
+                    <div className={`w-16 h-1 mx-2 ${step > stepNumber ? 'bg-emerald-500' : 'bg-gray-200 dark:bg-gray-700'
+                      }`} />
                   )}
                 </div>
               ))}
@@ -374,27 +387,29 @@ const BookingPage: React.FC<BookingPageProps> = ({ user }) => {
 
               {/* Navigation Buttons */}
               <div className="flex justify-between mt-8">
-                <button
-                  onClick={() => setStep(Math.max(1, step - 1))}
-                  disabled={loading}
-                  disabled={step === 1}
-                  className="px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'Confirmation...' : 'Confirmer la réservation'}
-                </button>
+                {step > 1 && (
+                  <button
+                    onClick={() => setStep(step - 1)}
+                    disabled={loading}
+                    className="px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Précédent
+                  </button>
+                )}
                 {step < 3 ? (
                   <button
                     onClick={() => setStep(step + 1)}
-                    className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-blue-500 text-white rounded-lg hover:shadow-lg transition-all duration-200"
+                    className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-blue-500 text-white rounded-lg hover:shadow-lg transition-all duration-200 ml-auto"
                   >
                     Suivant
                   </button>
                 ) : (
                   <button
                     onClick={handleSubmit}
-                    className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-blue-500 text-white rounded-lg hover:shadow-lg transition-all duration-200"
+                    disabled={loading}
+                    className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-blue-500 text-white rounded-lg hover:shadow-lg transition-all duration-200 ml-auto disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Confirmer la réservation
+                    {loading ? 'Confirmation...' : 'Confirmer la réservation'}
                   </button>
                 )}
               </div>
@@ -407,21 +422,19 @@ const BookingPage: React.FC<BookingPageProps> = ({ user }) => {
               <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
                 Transporteur sélectionné
               </h3>
-              
+
               <div className="flex items-start space-x-4 mb-4">
                 <img
-                  src={transporter?.avatar_url || 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop'}
-                  alt={transporter?.first_name || 'Transporteur'}
+                  src={'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop'}
+                  alt={'Transporteur'}
                   className="w-12 h-12 rounded-full object-cover"
                 />
                 <div className="flex-1">
                   <div className="flex items-center space-x-2 mb-1">
                     <h4 className="font-medium text-gray-900 dark:text-white">
-                      {transporter?.first_name} {transporter?.last_name}
+                      Transporteur
                     </h4>
-                    {transporter?.is_verified && (
-                      <Shield className="h-4 w-4 text-emerald-500" />
-                    )}
+                    <Shield className="h-4 w-4 text-emerald-500" />
                   </div>
                   <div className="flex items-center space-x-1 text-sm text-gray-600 dark:text-gray-400">
                     <Star className="h-4 w-4 text-yellow-400 fill-current" />

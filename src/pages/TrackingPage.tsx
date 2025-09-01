@@ -1,28 +1,131 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Package, 
   MapPin, 
   Clock, 
   CheckCircle, 
-  Truck, 
-  AlertCircle,
   Search,
-  Filter,
   Eye,
   MessageCircle,
-  Star
+  User
 } from 'lucide-react';
-import { useReservations } from '../hooks/useReservations';
+import { supabase } from '../lib/supabase';
+import toast from 'react-hot-toast';
 
 interface TrackingPageProps {
   user: any;
 }
 
+interface Reservation {
+  id: string;
+  expedition_id: string;
+  trip_id: string;
+  client_id: string;
+  transporteur_id: string;
+  total_price: number;
+  status: 'pending' | 'confirmed' | 'in_transit' | 'delivered' | 'cancelled';
+  tracking_code: string;
+  pickup_address?: string;
+  delivery_address?: string;
+  pickup_date?: string;
+  delivery_date?: string;
+  created_at: string;
+  updated_at: string;
+  trip?: {
+    departure_city: string;
+    destination_city: string;
+    departure_date: string;
+  };
+  client?: {
+    first_name: string;
+    last_name: string;
+    phone: string;
+  };
+  transporteur?: {
+    first_name: string;
+    last_name: string;
+    phone: string;
+  };
+  expedition?: {
+    description: string;
+    weight_kg: number;
+  };
+}
+
 const TrackingPage: React.FC<TrackingPageProps> = ({ user }) => {
-  const { reservations, loading, updateReservationStatus } = useReservations(user?.id, user?.profile?.role);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    fetchReservations();
+  }, [user]);
+
+  const fetchReservations = async () => {
+    try {
+      setLoading(true);
+      
+      let query = supabase
+        .from('reservations')
+        .select(`
+          *,
+          trip:trips(departure_city, destination_city, departure_date),
+          client:client_id(first_name, last_name, phone),
+          transporteur:transporteur_id(first_name, last_name, phone),
+          expedition:expeditions(description, weight_kg)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (user?.profile?.role === 'client') {
+        query = query.eq('client_id', user.id);
+      } else if (user?.profile?.role === 'transporteur') {
+        query = query.eq('transporteur_id', user.id);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching reservations:', error);
+        throw error;
+      }
+
+      console.log('Fetched reservations:', data);
+      setReservations(data || []);
+    } catch (error: any) {
+      console.error('Error fetching reservations:', error);
+      toast.error('Erreur lors du chargement des réservations');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateReservationStatus = async (id: string, status: string, updates?: any) => {
+    try {
+      const updateData = { status, ...updates };
+      
+      const { data, error } = await supabase
+        .from('reservations')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Mettre à jour localement
+      setReservations(prev => prev.map(res => 
+        res.id === id ? { ...res, ...updateData } : res
+      ));
+      
+      toast.success('Statut mis à jour');
+      return { data, error: null };
+    } catch (error: any) {
+      toast.error(error.message || 'Erreur lors de la mise à jour');
+      return { data: null, error };
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -50,9 +153,12 @@ const TrackingPage: React.FC<TrackingPageProps> = ({ user }) => {
     const matchesFilter = filter === 'all' || reservation.status === filter;
     const matchesSearch = !searchQuery || 
       reservation.tracking_code?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      reservation.expedition_title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      reservation.departure_city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      reservation.destination_city?.toLowerCase().includes(searchQuery.toLowerCase());
+      reservation.trip?.departure_city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      reservation.trip?.destination_city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (user?.profile?.role === 'transporteur' 
+        ? `${reservation.client?.first_name} ${reservation.client?.last_name}`.toLowerCase().includes(searchQuery.toLowerCase())
+        : `${reservation.transporteur?.first_name} ${reservation.transporteur?.last_name}`.toLowerCase().includes(searchQuery.toLowerCase())
+      );
     
     return matchesFilter && matchesSearch;
   });
@@ -95,19 +201,23 @@ const TrackingPage: React.FC<TrackingPageProps> = ({ user }) => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <input
                   type="text"
-                  placeholder="Rechercher par code de suivi, ville..."
+                  placeholder={
+                    user?.profile?.role === 'transporteur' 
+                      ? "Rechercher par code, ville, nom client..."
+                      : "Rechercher par code, ville, nom transporteur..."
+                  }
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:bg-gray-700 dark:text-white"
                 />
               </div>
             </div>
-            <div className="flex gap-2">
-              {['all', 'pending', 'confirmed', 'in_transit', 'delivered'].map((status) => (
+            <div className="flex gap-2 flex-wrap">
+              {['all', 'pending', 'confirmed', 'in_transit', 'delivered', 'cancelled'].map((status) => (
                 <button
                   key={status}
                   onClick={() => setFilter(status)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
                     filter === status
                       ? 'bg-emerald-500 text-white'
                       : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -142,7 +252,7 @@ const TrackingPage: React.FC<TrackingPageProps> = ({ user }) => {
                           {reservation.tracking_code}
                         </h3>
                         <p className="text-gray-600 dark:text-gray-400">
-                          {reservation.departure_city} → {reservation.destination_city}
+                          {reservation.trip?.departure_city || 'Inconnu'} → {reservation.trip?.destination_city || 'Inconnu'}
                         </p>
                       </div>
                     </div>
@@ -157,11 +267,11 @@ const TrackingPage: React.FC<TrackingPageProps> = ({ user }) => {
                       <span>Créé le {new Date(reservation.created_at).toLocaleDateString()}</span>
                     </div>
                     <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
-                      <MapPin className="h-4 w-4" />
+                      <User className="h-4 w-4" />
                       <span>
                         {user?.profile?.role === 'transporteur' 
-                          ? `Client: ${reservation.client_first_name} ${reservation.client_last_name}`
-                          : `Transporteur: ${reservation.transporteur_first_name} ${reservation.transporteur_last_name}`
+                          ? `Client: ${reservation.client?.first_name || 'Inconnu'} ${reservation.client?.last_name || ''}`
+                          : `Transporteur: ${reservation.transporteur?.first_name || 'Inconnu'} ${reservation.transporteur?.last_name || ''}`
                         }
                       </span>
                     </div>
@@ -170,6 +280,17 @@ const TrackingPage: React.FC<TrackingPageProps> = ({ user }) => {
                       <span>{reservation.total_price} MAD</span>
                     </div>
                   </div>
+
+                  {reservation.expedition && (
+                    <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        <strong>Contenu:</strong> {reservation.expedition.description}
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        <strong>Poids:</strong> {reservation.expedition.weight_kg} kg
+                      </p>
+                    </div>
+                  )}
 
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">

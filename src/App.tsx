@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 
 // Components
 import Header from './components/Header';
@@ -30,9 +30,9 @@ import { useTheme } from './hooks/useTheme';
 function App() {
   const { user, loading, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const [showAuth, setShowAuth] = useState(false);
-  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showAuth, setShowAuth] = React.useState(false);
+  const [authMode, setAuthMode] = React.useState<'login' | 'signup'>('login');
+  const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
   // Only show loading spinner on initial app load
   if (loading && !user) {

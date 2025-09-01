@@ -13,7 +13,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export interface Profile {
   id: string;
   user_id: string;
-  role: 'client' | 'transporteur';
+  role: 'client' | 'transporteur' | 'admin';
   first_name?: string;
   last_name?: string;
   phone?: string;

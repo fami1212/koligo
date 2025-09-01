@@ -10,22 +10,32 @@ interface AuthUser extends User {
 export const useAuth = () => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [initialLoad, setInitialLoad] = useState(true);
 
   useEffect(() => {
     // Get initial session
     const getInitialSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error getting session:', error);
+          setLoading(false);
+          return;
+        }
+
         if (session?.user) {
-          const profile = await getCurrentProfile();
-          setUser({ ...session.user, profile: profile || undefined });
+          try {
+            const profile = await getCurrentProfile();
+            setUser({ ...session.user, profile: profile || undefined });
+          } catch (profileError) {
+            console.error('Error fetching profile:', profileError);
+            setUser(session.user); // Set user without profile if profile fetch fails
+          }
         }
       } catch (error) {
-        console.error('Error getting initial session:', error);
+        console.error('Error in getInitialSession:', error);
       } finally {
         setLoading(false);
-        setInitialLoad(false);
       }
     };
 
@@ -34,19 +44,28 @@ export const useAuth = () => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (!initialLoad) setLoading(true);
+        console.log('Auth state changed:', event);
+        
         if (session?.user) {
-          const profile = await getCurrentProfile();
-          setUser({ ...session.user, profile: profile || undefined });
+          try {
+            const profile = await getCurrentProfile();
+            setUser({ ...session.user, profile: profile || undefined });
+          } catch (error) {
+            console.error('Error fetching profile on auth change:', error);
+            setUser(session.user); // Set user without profile
+          }
         } else {
           setUser(null);
         }
-        if (!initialLoad) setLoading(false);
+        
+        // Don't set loading to false here as it's handled by initial load
       }
     );
 
-    return () => subscription.unsubscribe();
-  }, [initialLoad]);
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const signup = async (userData: {
     email: string;
@@ -75,7 +94,6 @@ export const useAuth = () => {
       if (error) throw error;
 
       if (data.user && !data.user.identities?.length) {
-        // User already exists
         toast.error('Un compte avec cet email existe déjà');
         return { data: null, error: new Error('User already exists') };
       }
@@ -86,6 +104,7 @@ export const useAuth = () => {
 
       return { data, error: null };
     } catch (error: any) {
+      console.error('Signup error:', error);
       toast.error(error.message || 'Erreur lors de la création du compte');
       return { data: null, error };
     } finally {
@@ -107,6 +126,7 @@ export const useAuth = () => {
       toast.success('Connexion réussie!');
       return { data, error: null };
     } catch (error: any) {
+      console.error('Login error:', error);
       toast.error(error.message || 'Email ou mot de passe incorrect');
       return { data: null, error };
     } finally {
@@ -122,6 +142,7 @@ export const useAuth = () => {
       setUser(null);
       toast.success('Déconnexion réussie');
     } catch (error: any) {
+      console.error('Logout error:', error);
       toast.error(error.message || 'Erreur lors de la déconnexion');
     }
   };
@@ -143,6 +164,7 @@ export const useAuth = () => {
       toast.success('Profil mis à jour');
       return { data, error: null };
     } catch (error: any) {
+      console.error('Update user error:', error);
       toast.error(error.message || 'Erreur lors de la mise à jour');
       return { data: null, error };
     }
