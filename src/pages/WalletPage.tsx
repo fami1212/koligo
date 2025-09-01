@@ -316,6 +316,19 @@ const WalletPage: React.FC<WalletPageProps> = ({ user }) => {
                 </motion.div>
               );
             })}
+          ) : (
+            <div className="text-center py-12">
+              <Wallet className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-xl font-medium text-gray-900 dark:text-white mb-2">
+                Aucune transaction
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400">
+                {user?.profile?.role === 'transporteur' 
+                  ? 'Créez votre premier trajet pour commencer à gagner'
+                  : 'Effectuez votre première réservation'
+                }
+              </p>
+            </div>
           </div>
         </motion.div>
       </div>
