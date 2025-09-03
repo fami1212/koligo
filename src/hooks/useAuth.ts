@@ -19,6 +19,7 @@ export const useAuth = () => {
         
         if (error) {
           console.error('Error getting session:', error);
+          setUser(null);
           setLoading(false);
           return;
         }
@@ -31,9 +32,12 @@ export const useAuth = () => {
             console.error('Error fetching profile:', profileError);
             setUser(session.user); // Set user without profile if profile fetch fails
           }
+        } else {
+          setUser(null);
         }
       } catch (error) {
         console.error('Error in getInitialSession:', error);
+        setUser(null);
       } finally {
         setLoading(false);
       }
